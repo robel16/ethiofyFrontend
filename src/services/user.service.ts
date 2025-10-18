@@ -36,6 +36,7 @@ export interface Address {
   address_line_1: string;
   address_line_2?: string;
   city: string;
+  street: string;
   state?: string;
   postal_code: string;
   country: string;
@@ -73,6 +74,7 @@ export interface AddAddressRequest {
   address_line_1: string;
   address_line_2?: string;
   city: string;
+  street: string;
   state?: string;
   postal_code: string;
   country: string;
@@ -140,10 +142,15 @@ export class UserService {
     data: UpdatePreferencesRequest
   ): Promise<UserPreferences> {
     try {
+      console.log("Calling updatePreferences API with data:", data);
+
+      // Try the preferences endpoint first
       const response = await api.put<ApiResponse<UserPreferences>>(
         "/users/preferences",
         data
       );
+
+      console.log("updatePreferences API response:", response.data);
 
       if (!response.data.success || !response.data.data) {
         throw new Error(
@@ -153,6 +160,32 @@ export class UserService {
 
       return response.data.data;
     } catch (error: any) {
+      console.error("updatePreferences API error:", error);
+      console.error("Error response:", error.response?.data);
+
+      // If the preferences endpoint doesn't exist, try updating through profile
+      if (error.response?.status === 404) {
+        console.log("Preferences endpoint not found, trying profile endpoint");
+        try {
+          const profileResponse = await api.put<ApiResponse<UserProfile>>(
+            "/users/profile",
+            { preferences: data }
+          );
+
+          if (!profileResponse.data.success || !profileResponse.data.data) {
+            throw new Error("Failed to update preferences via profile");
+          }
+
+          return profileResponse.data.data.preferences || data;
+        } catch (profileError: any) {
+          console.error("Profile update also failed:", profileError);
+          throw new Error(
+            profileError.response?.data?.message ||
+              "Failed to update preferences"
+          );
+        }
+      }
+
       throw new Error(
         error.response?.data?.message || "Failed to update preferences"
       );
@@ -198,6 +231,42 @@ export class UserService {
     }
   }
 
+  async getUserAddresses(userId: string): Promise<ApiResponse<Address[]>> {
+    try {
+      const response = await api.get<ApiResponse<Address[]>>(
+        `/users/${userId}/addresses`
+      );
+
+      if (!response.data.success) {
+        throw new Error(response.data.message || "Failed to get addresses");
+      }
+
+      return response.data;
+    } catch (error: any) {
+      throw new Error(
+        error.response?.data?.message || "Failed to get addresses"
+      );
+    }
+  }
+
+  async setDefaultAddress(addressId: string): Promise<void> {
+    try {
+      const response = await api.put<ApiResponse>(
+        `/users/addresses/${addressId}/default`
+      );
+
+      if (!response.data.success) {
+        throw new Error(
+          response.data.message || "Failed to set default address"
+        );
+      }
+    } catch (error: any) {
+      throw new Error(
+        error.response?.data?.message || "Failed to set default address"
+      );
+    }
+  }
+
   async deleteAddress(addressId: string): Promise<void> {
     try {
       const response = await api.delete<ApiResponse>(
@@ -221,9 +290,70 @@ export class UserService {
       if (!response.data.success) {
         throw new Error(response.data.message || "Failed to change password");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw new Error(
         error.response?.data?.message || "Failed to change password"
+      );
+    }
+  }
+
+  async removeAvatar(): Promise<void> {
+    try {
+      // First, get the current user profile to get the avatar URL
+      const profile = await this.getProfile();
+
+      if (!profile.avatar_url) {
+        throw new Error("No avatar to remove");
+      }
+
+      // Extract file ID from avatar URL
+      let fileId: string | null = null;
+
+      // Handle different URL formats
+      if (profile.avatar_url.includes("/api/files/")) {
+        // Extract from localhost proxy URL: /api/files/fileId
+        const match = profile.avatar_url.match(/\/api\/files\/([^\/\?]+)/);
+        if (match) {
+          fileId = match[1];
+        }
+      } else if (profile.avatar_url.includes("/public/")) {
+        // Extract from public URL: /public/fileId
+        const match = profile.avatar_url.match(/\/public\/([^\/\?]+)/);
+        if (match) {
+          fileId = match[1];
+        }
+      } else if (
+        profile.avatar_url.includes("ethiofy.obsv3.et-global-1.ethiotelecom.et")
+      ) {
+        // For direct OBS URLs, extract the file ID from the path
+        const match = profile.avatar_url.match(
+          /\/([^\/]+)\.(jpg|jpeg|png|gif|webp)$/i
+        );
+        if (match) {
+          fileId = match[1];
+        }
+      }
+
+      if (!fileId) {
+        throw new Error("Could not extract file ID from avatar URL");
+      }
+
+      // Delete the file using the files API
+      const deleteResponse = await api.delete<ApiResponse>(`/files/${fileId}`);
+
+      if (!deleteResponse.data.success) {
+        throw new Error(
+          deleteResponse.data.message || "Failed to delete avatar file"
+        );
+      }
+
+      // Update the user profile to remove the avatar reference
+      await this.updateProfile({ avatar_url: "" });
+    } catch (error: unknown) {
+      throw new Error(
+        error.response?.data?.message ||
+          error.message ||
+          "Failed to remove avatar"
       );
     }
   }
@@ -237,10 +367,12 @@ export class UserService {
           response.data.message || "Failed to deactivate account"
         );
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw new Error(
         error.response?.data?.message || "Failed to deactivate account"
       );
     }
   }
 }
+
+export const userService = UserService.getInstance();

@@ -49,8 +49,10 @@ export interface User {
 
 // Transform API user to our User interface
 function transformApiUser(apiUser: ApiUser): User {
-  return {
-    id: apiUser.user_id,
+  console.log("transformApiUser: Input apiUser:", apiUser);
+
+  const transformed = {
+    id: apiUser.user_id || apiUser._id,
     email: apiUser.email,
     role: apiUser.role,
     name: apiUser.profile
@@ -64,6 +66,9 @@ function transformApiUser(apiUser: ApiUser): User {
     email_verified: apiUser.email_verified,
     status: apiUser.status,
   };
+
+  console.log("transformApiUser: Output transformed:", transformed);
+  return transformed;
 }
 
 export interface AuthTokens {
@@ -122,9 +127,7 @@ export class AuthService {
     }
   }
 
-  async login(
-    credentials: LoginRequest
-  ): Promise<{
+  async login(credentials: LoginRequest): Promise<{
     success: boolean;
     message: string;
     data: { user: User; tokens: AuthTokens };
@@ -157,9 +160,7 @@ export class AuthService {
     }
   }
 
-  async register(
-    userData: RegisterRequest
-  ): Promise<{
+  async register(userData: RegisterRequest): Promise<{
     success: boolean;
     message: string;
     data: { user: User; tokens: AuthTokens };
@@ -249,19 +250,48 @@ export class AuthService {
         },
       });
 
-      if (response.data.success && response.data.data) {
-        return transformApiUser(response.data.data);
+      console.log("AuthService: Raw API response:", response.data);
+      console.log("AuthService: Response success:", response.data.success);
+      console.log("AuthService: Response data exists:", !!response.data.data);
+
+      if (
+        response.data.success &&
+        response.data.data &&
+        response.data.data.user
+      ) {
+        console.log("AuthService: API user data:", response.data.data.user);
+        console.log(
+          "AuthService: API user data keys:",
+          Object.keys(response.data.data.user)
+        );
+        const transformedUser = transformApiUser(response.data.data.user);
+        console.log("AuthService: Transformed user:", transformedUser);
+        return transformedUser;
+      } else {
+        console.log("AuthService: API response not successful or no user data");
+        console.log("AuthService: Success:", response.data.success);
+        console.log("AuthService: Data:", response.data.data);
+        console.log("AuthService: User in data:", response.data.data?.user);
       }
     } catch (error: any) {
       if (error.response?.status === 401) {
         // Try to refresh token
+        console.log("Access token expired, attempting refresh...");
         const newToken = await this.refreshAccessToken();
         if (newToken) {
           // Retry with new token
+          console.log(
+            "Token refreshed successfully, retrying getCurrentUser..."
+          );
           return this.getCurrentUser();
+        } else {
+          console.log("Token refresh failed, user needs to login again");
         }
+      } else {
+        console.error("Get current user failed with non-401 error:", error);
+        // For non-401 errors, don't clear tokens - could be network issue
+        throw error;
       }
-      console.error("Get current user failed:", error);
     }
 
     return null;
@@ -281,7 +311,7 @@ export class AuthService {
           response.data.message || "Password reset request failed"
         );
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw new Error(
         error.response?.data?.message || "Password reset request failed"
       );
@@ -306,7 +336,7 @@ export class AuthService {
       if (!response.data.success) {
         throw new Error(response.data.message || "Password reset failed");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw new Error(error.response?.data?.message || "Password reset failed");
     }
   }
@@ -320,7 +350,7 @@ export class AuthService {
       if (!response.data.success) {
         throw new Error(response.data.message || "Email verification failed");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw new Error(
         error.response?.data?.message || "Email verification failed"
       );
@@ -337,7 +367,7 @@ export class AuthService {
     }
   }
 
-  private clearTokens(): void {
+  clearTokens(): void {
     this.accessToken = null;
     this.refreshToken = null;
 

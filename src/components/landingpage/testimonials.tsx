@@ -8,7 +8,7 @@ const testimonials = [
     name: "Sarah Chen",
     role: "Designer & Creator",
     content:
-      "PrintFlow changed my business completely. The direct connection to print providers means better margins and faster fulfillment. I've scaled from 10 to 500+ orders per month!",
+      "Ethiofy changed my business completely. The direct connection to print providers means better margins and faster fulfillment. I've scaled from 10 to 500+ orders per month!",
     rating: 5,
     avatar: "/professional-woman-smiling.png",
   },

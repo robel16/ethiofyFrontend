@@ -23,8 +23,8 @@ export function RoleBasedDashboard() {
       return;
     }
 
-    // If user exists but no role, show error
-    if (user && !user.role) {
+    // If user exists but no role, show error (only after loading is complete)
+    if (!isLoading && user && !user.role) {
       console.error("User has no role assigned");
       return;
     }
@@ -53,22 +53,29 @@ export function RoleBasedDashboard() {
     );
   }
 
-  // Show error if user has no role
-  if (!user.role) {
+  // Render appropriate dashboard based on user role
+  // If no role is assigned, show error
+  const userRole = user.role;
+
+  console.log("RoleBasedDashboard - user:", user);
+  console.log("RoleBasedDashboard - user role:", userRole);
+
+  // Check if user has a valid role
+  if (!userRole) {
+    console.error("User object exists but has no role:", user);
     return (
       <div className="flex min-h-screen items-center justify-center p-6">
         <Alert variant="destructive" className="max-w-md">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            Your account does not have a role assigned. Please contact support.
+            User account has no role assigned. Please contact support.
           </AlertDescription>
         </Alert>
       </div>
     );
   }
 
-  // Render appropriate dashboard based on user role
-  switch (user.role) {
+  switch (userRole) {
     case "customer":
       return <CustomerDashboard />;
 
@@ -89,7 +96,7 @@ export function RoleBasedDashboard() {
           <Alert variant="destructive" className="max-w-md">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              Unknown user role: {user.role}. Please contact support.
+              Unknown user role: {userRole}. Please contact support.
             </AlertDescription>
           </Alert>
         </div>

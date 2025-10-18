@@ -42,24 +42,62 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // Check if user is already authenticated on mount
-    initializeAuth();
-  }, []);
-
-  const initializeAuth = async () => {
-    setIsLoading(true);
-    try {
-      if (authService.isAuthenticated()) {
-        const currentUser = await authService.getCurrentUser();
-        setUser(currentUser);
+    const initializeAuth = async () => {
+      try {
+        if (authService.isAuthenticated()) {
+          console.log("AuthContext: Tokens found, getting current user...");
+          const currentUser = await authService.getCurrentUser();
+          if (currentUser) {
+            console.log("AuthContext: User data retrieved:", currentUser);
+            setUser(currentUser);
+          } else {
+            // If we can't get user data but have tokens, try one more time after a short delay
+            console.log("AuthContext: Unable to get user data, retrying...");
+            setTimeout(async () => {
+              try {
+                const retryUser = await authService.getCurrentUser();
+                if (retryUser) {
+                  console.log("AuthContext: Retry successful:", retryUser);
+                  setUser(retryUser);
+                } else {
+                  console.log("AuthContext: Retry failed, clearing tokens");
+                  authService.clearTokens();
+                }
+              } catch (retryError) {
+                console.error("AuthContext: Retry failed:", retryError);
+                authService.clearTokens();
+              }
+            }, 1000);
+          }
+        } else {
+          console.log("AuthContext: No tokens found, user not authenticated");
+        }
+      } catch (error) {
+        console.error("Auth initialization failed:", error);
+        // Don't immediately clear tokens on first failure - could be network issue
+        console.log(
+          "Network error during auth initialization, keeping tokens for retry"
+        );
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      console.error("Auth initialization failed:", error);
-      // Clear invalid tokens
-      await authService.logout();
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    };
+
+    initializeAuth();
+  }, [authService]); // Empty dependency array since we only want this to run once on mount
+
+  // Add a periodic check to see if tokens have been cleared by API interceptor
+  useEffect(() => {
+    const checkTokens = () => {
+      if (user && !authService.isAuthenticated()) {
+        console.log("AuthContext: Tokens were cleared, logging out user");
+        setUser(null);
+      }
+    };
+
+    const interval = setInterval(checkTokens, 5000); // Check every 5 seconds
+    return () => clearInterval(interval);
+  }, [user, authService]);
 
   const login = async (email: string, password: string, rememberMe = false) => {
     setIsLoading(true);
@@ -129,6 +167,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error("Failed to refresh user:", error);
         setUser(null);
       }
+    } else {
+      // If not authenticated, clear user state
+      setUser(null);
     }
   };
 

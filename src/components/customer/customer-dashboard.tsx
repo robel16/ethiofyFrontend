@@ -20,9 +20,11 @@ import {
   ChevronRight,
   X,
   TrendingUp,
+  Menu,
 } from "lucide-react";
 import { ProductCarousel } from "@/components/product-carousel";
 import { SetupProgress } from "@/components/setup-progress";
+import AccountSettings from "@/components/customer/account-settings";
 
 const sidebarItems = [
   { icon: Home, label: "Dashboard", active: true },
@@ -116,9 +118,11 @@ const trendingProducts = [
 
 export default function Dashboard() {
   const [showPromo, setShowPromo] = useState(true);
+  const [currentView, setCurrentView] = useState("dashboard");
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Promotional Banner */}
       {showPromo && (
         <div className="bg-gradient-to-r from-purple-600 to-blue-600 px-4 py-3 text-sm text-white">
@@ -148,256 +152,317 @@ export default function Dashboard() {
 
       <div className="flex">
         {/* Sticky Sidebar */}
-        <div className="sticky top-0 h-screen w-64 overflow-y-auto border-r border-gray-200 bg-white">
+        <div
+          className={`sticky top-0 h-screen ${sidebarOpen ? "w-64" : "w-16"} overflow-y-auto border-r border-gray-200 bg-white transition-all duration-300 dark:border-gray-700 dark:bg-gray-800`}
+        >
           {/* Logo */}
-          <div className="border-b border-gray-200 p-4">
+          <div className="border-b border-gray-200 p-4 dark:border-gray-700">
             <div className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-purple-500 to-pink-500">
-                <span className="text-sm font-bold text-white">P</span>
+                <span className="text-sm font-bold text-white">E</span>
               </div>
-              <span className="text-xl font-bold">Ethiofy</span>
+              {sidebarOpen && (
+                <span className="text-xl font-bold dark:text-white">
+                  Ethiofy
+                </span>
+              )}
+              <button
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                className="ml-auto rounded p-1 hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                <Menu className="h-4 w-4 dark:text-gray-300" />
+              </button>
             </div>
           </div>
 
           {/* Store Selector */}
-          <div className="border-b border-gray-200 p-4">
-            <Button
-              variant="ghost"
-              className="w-full justify-between text-left"
-            >
-              <div className="flex items-center gap-2">
-                <div className="h-6 w-6 rounded bg-gray-200"></div>
-                <span className="text-sm">My new store</span>
-              </div>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
+          {sidebarOpen && (
+            <div className="border-b border-gray-200 p-4 dark:border-gray-700">
+              <Button
+                variant="ghost"
+                className="w-full justify-between text-left dark:text-gray-300 dark:hover:bg-gray-700"
+              >
+                <div className="flex items-center gap-2">
+                  <div className="h-6 w-6 rounded bg-gray-200 dark:bg-gray-600"></div>
+                  <span className="text-sm">My new store</span>
+                </div>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
 
           {/* Navigation */}
           <nav className="p-2">
             {sidebarItems.map((item, index) => (
               <Button
                 key={index}
-                variant={item.active ? "secondary" : "ghost"}
-                className={`mb-1 w-full justify-between ${item.active ? "bg-blue-50 text-blue-700" : "text-gray-700"}`}
+                variant={
+                  (item.active && currentView === "dashboard") ||
+                  (item.label === "Account" && currentView === "account")
+                    ? "secondary"
+                    : "ghost"
+                }
+                className={`mb-1 w-full ${sidebarOpen ? "justify-between" : "justify-center"} ${
+                  (item.active && currentView === "dashboard") ||
+                  (item.label === "Account" && currentView === "account")
+                    ? "bg-blue-50 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300"
+                    : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
+                }`}
+                onClick={() => {
+                  if (item.label === "Account") {
+                    setCurrentView("account");
+                  } else if (item.label === "Dashboard") {
+                    setCurrentView("dashboard");
+                  }
+                }}
+                title={!sidebarOpen ? item.label : undefined}
               >
-                <div className="flex items-center gap-3">
+                <div
+                  className={`flex items-center ${sidebarOpen ? "gap-3" : ""}`}
+                >
                   <item.icon className="h-4 w-4" />
-                  <span className="text-sm">{item.label}</span>
+                  {sidebarOpen && <span className="text-sm">{item.label}</span>}
                 </div>
-                {item.hasSubmenu && <ChevronRight className="h-4 w-4" />}
+                {item.hasSubmenu && sidebarOpen && (
+                  <ChevronRight className="h-4 w-4" />
+                )}
               </Button>
             ))}
           </nav>
         </div>
 
         {/* Main Content - Scrollable */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900">
           <div className="space-y-6 p-6">
-            {/* Setup Progress */}
-            <SetupProgress />
+            {currentView === "account" ? (
+              <AccountSettings onBack={() => setCurrentView("dashboard")} />
+            ) : (
+              <>
+                {/* Setup Progress */}
+                <SetupProgress />
 
-            {/* Quick Actions Section */}
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-gray-900">
-                Quick Actions
-              </h2>
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              <Card className="group cursor-pointer transition-all duration-300 hover:shadow-lg">
-                <CardContent className="p-6 text-center">
-                  <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br from-purple-500 to-pink-500">
-                    <Palette className="h-6 w-6 text-white" />
-                  </div>
-                  <h3 className="mb-2 font-semibold text-gray-900">
-                    Create New Product
-                  </h3>
-                  <p className="mb-4 text-sm text-gray-600">
-                    Design and customize your products
-                  </p>
-                  <Button asChild className="w-full">
-                    <a href="/editor">Start Designing</a>
-                  </Button>
-                </CardContent>
-              </Card>
-
-              <Card className="group cursor-pointer transition-all duration-300 hover:shadow-lg">
-                <CardContent className="p-6 text-center">
-                  <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500">
-                    <ShoppingBag className="h-6 w-6 text-white" />
-                  </div>
-                  <h3 className="mb-2 font-semibold text-gray-900">
-                    View Orders
-                  </h3>
-                  <p className="mb-4 text-sm text-gray-600">
-                    Track your recent orders
-                  </p>
-                  <Button variant="outline" className="w-full bg-transparent">
-                    View All Orders
-                  </Button>
-                </CardContent>
-              </Card>
-
-              <Card className="group cursor-pointer transition-all duration-300 hover:shadow-lg">
-                <CardContent className="p-6 text-center">
-                  <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br from-green-500 to-emerald-500">
-                    <BarChart3 className="h-6 w-6 text-white" />
-                  </div>
-                  <h3 className="mb-2 font-semibold text-gray-900">
-                    Analytics
-                  </h3>
-                  <p className="mb-4 text-sm text-gray-600">
-                    View your store performance
-                  </p>
-                  <Button variant="outline" className="w-full bg-transparent">
-                    View Insights
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Best Sellers Section */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-gray-900">
-                  Create more for Clothing & Apparel
-                </h2>
-                <Button variant="outline" className="bg-transparent text-sm">
-                  Change collection
-                  <ChevronRight className="ml-1 h-4 w-4" />
-                </Button>
-              </div>
-
-              <ProductCarousel products={bestSellers} />
-            </div>
-
-            {/* Trending Products Banner */}
-            <Card className="border-0 bg-gradient-to-r from-orange-400 to-orange-500 text-white">
-              <CardContent className="p-6">
+                {/* Quick Actions Section */}
                 <div className="flex items-center justify-between">
-                  <div className="space-y-2">
-                    <Badge className="border-0 bg-white/20 text-white">
-                      New
-                    </Badge>
-                    <h3 className="text-2xl font-bold">
-                      First to market, first to profit.
-                    </h3>
-                    <p className="text-orange-100">
-                      Stay ahead of the curve. Launch the hottest trending
-                      products instantly, while shopper demand is at its peak.
-                    </p>
-                    <Button className="mt-4 bg-gray-800 text-white hover:bg-gray-900">
-                      See what's trending
-                    </Button>
-                  </div>
-                  <div className="hidden md:block">
-                    <div className="flex h-32 w-32 items-center justify-center rounded-lg bg-white/10">
-                      <TrendingUp className="h-16 w-16 text-white/80" />
-                    </div>
-                  </div>
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                    Quick Actions
+                  </h2>
                 </div>
-              </CardContent>
-            </Card>
 
-            {/* Trending Products Carousel */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-gray-900">
-                  Trending Now
-                </h2>
-                <Button variant="outline" className="bg-transparent text-sm">
-                  View all trends
-                  <ChevronRight className="ml-1 h-4 w-4" />
-                </Button>
-              </div>
-
-              <div className="scrollbar-hide flex gap-4 overflow-x-auto pb-4">
-                {trendingProducts.map((product) => (
-                  <Card
-                    key={product.id}
-                    className="group w-64 flex-shrink-0 cursor-pointer transition-all duration-300 hover:shadow-lg"
-                  >
-                    <CardContent className="p-3">
-                      <div className="mb-3 aspect-square h-32 overflow-hidden rounded-lg bg-gray-50">
-                        <img
-                          src={product.image || "/placeholder.svg"}
-                          alt={product.name}
-                          className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
-                        />
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                  <Card className="group cursor-pointer transition-all duration-300 hover:shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                    <CardContent className="p-6 text-center">
+                      <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br from-purple-500 to-pink-500">
+                        <Palette className="h-6 w-6 text-white" />
                       </div>
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between">
-                          <h3 className="truncate text-sm font-semibold text-gray-900">
-                            {product.name}
-                          </h3>
-                          <Badge
-                            variant="secondary"
-                            className="bg-green-100 text-xs text-green-700"
-                          >
-                            {product.trend}
-                          </Badge>
-                        </div>
-                        <p className="text-xs text-gray-600">
-                          By {product.brand}
-                        </p>
-                        <p className="text-sm font-bold">
-                          From USD {product.price}
-                        </p>
-                      </div>
+                      <h3 className="mb-2 font-semibold text-gray-900 dark:text-white">
+                        Create New Product
+                      </h3>
+                      <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">
+                        Design and customize your products
+                      </p>
+                      <Button asChild className="w-full">
+                        <a href="/editor">Start Designing</a>
+                      </Button>
                     </CardContent>
                   </Card>
-                ))}
-              </div>
-            </div>
 
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-600">
-                    Total Products
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">1,247</div>
-                  <p className="flex items-center gap-1 text-xs text-green-600">
-                    <TrendingUp className="h-3 w-3" />
-                    +12% from last month
-                  </p>
-                </CardContent>
-              </Card>
+                  <Card className="group cursor-pointer transition-all duration-300 hover:shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                    <CardContent className="p-6 text-center">
+                      <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500">
+                        <ShoppingBag className="h-6 w-6 text-white" />
+                      </div>
+                      <h3 className="mb-2 font-semibold text-gray-900 dark:text-white">
+                        View Orders
+                      </h3>
+                      <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">
+                        Track your recent orders
+                      </p>
+                      <Button
+                        variant="outline"
+                        className="w-full bg-transparent dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                      >
+                        View All Orders
+                      </Button>
+                    </CardContent>
+                  </Card>
 
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-600">
-                    Orders This Month
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">89</div>
-                  <p className="flex items-center gap-1 text-xs text-green-600">
-                    <TrendingUp className="h-3 w-3" />
-                    +23% from last month
-                  </p>
-                </CardContent>
-              </Card>
+                  <Card className="group cursor-pointer transition-all duration-300 hover:shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                    <CardContent className="p-6 text-center">
+                      <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br from-green-500 to-emerald-500">
+                        <BarChart3 className="h-6 w-6 text-white" />
+                      </div>
+                      <h3 className="mb-2 font-semibold text-gray-900 dark:text-white">
+                        Analytics
+                      </h3>
+                      <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">
+                        View your store performance
+                      </p>
+                      <Button
+                        variant="outline"
+                        className="w-full bg-transparent dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                      >
+                        View Insights
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </div>
 
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-600">
-                    Revenue
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">$2,847</div>
-                  <p className="flex items-center gap-1 text-xs text-green-600">
-                    <TrendingUp className="h-3 w-3" />
-                    +18% from last month
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
+                {/* Best Sellers Section */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                      Create more for Clothing & Apparel
+                    </h2>
+                    <Button
+                      variant="outline"
+                      className="bg-transparent text-sm dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                    >
+                      Change collection
+                      <ChevronRight className="ml-1 h-4 w-4" />
+                    </Button>
+                  </div>
+
+                  <ProductCarousel products={bestSellers} />
+                </div>
+
+                {/* Trending Products Banner */}
+                <Card className="border-0 bg-gradient-to-r from-orange-400 to-orange-500 text-white">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-2">
+                        <Badge className="border-0 bg-white/20 text-white">
+                          New
+                        </Badge>
+                        <h3 className="text-2xl font-bold">
+                          First to market, first to profit.
+                        </h3>
+                        <p className="text-orange-100">
+                          Stay ahead of the curve. Launch the hottest trending
+                          products instantly, while shopper demand is at its
+                          peak.
+                        </p>
+                        <Button className="mt-4 bg-gray-800 text-white hover:bg-gray-900">
+                          See what&apos;s trending
+                        </Button>
+                      </div>
+                      <div className="hidden md:block">
+                        <div className="flex h-32 w-32 items-center justify-center rounded-lg bg-white/10">
+                          <TrendingUp className="h-16 w-16 text-white/80" />
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Trending Products Carousel */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                      Trending Now
+                    </h2>
+                    <Button
+                      variant="outline"
+                      className="bg-transparent text-sm dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                    >
+                      View all trends
+                      <ChevronRight className="ml-1 h-4 w-4" />
+                    </Button>
+                  </div>
+
+                  <div className="scrollbar-hide flex gap-4 overflow-x-auto pb-4">
+                    {trendingProducts.map((product) => (
+                      <Card
+                        key={product.id}
+                        className="group w-64 flex-shrink-0 cursor-pointer transition-all duration-300 hover:shadow-lg dark:border-gray-700 dark:bg-gray-800"
+                      >
+                        <CardContent className="p-3">
+                          <div className="mb-3 aspect-square h-32 overflow-hidden rounded-lg bg-gray-50 dark:bg-gray-700">
+                            <img
+                              src={product.image || "/placeholder.svg"}
+                              alt={product.name}
+                              className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between">
+                              <h3 className="truncate text-sm font-semibold text-gray-900 dark:text-white">
+                                {product.name}
+                              </h3>
+                              <Badge
+                                variant="secondary"
+                                className="bg-green-100 text-xs text-green-700 dark:bg-green-900/50 dark:text-green-300"
+                              >
+                                {product.trend}
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-gray-600 dark:text-gray-400">
+                              By {product.brand}
+                            </p>
+                            <p className="text-sm font-bold dark:text-white">
+                              From USD {product.price}
+                            </p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Stats Cards */}
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+                  <Card className="dark:border-gray-700 dark:bg-gray-800">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                        Total Products
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold dark:text-white">
+                        1,247
+                      </div>
+                      <p className="flex items-center gap-1 text-xs text-green-600">
+                        <TrendingUp className="h-3 w-3" />
+                        +12% from last month
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="dark:border-gray-700 dark:bg-gray-800">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                        Orders This Month
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold dark:text-white">
+                        89
+                      </div>
+                      <p className="flex items-center gap-1 text-xs text-green-600">
+                        <TrendingUp className="h-3 w-3" />
+                        +23% from last month
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="dark:border-gray-700 dark:bg-gray-800">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                        Revenue
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold dark:text-white">
+                        $2,847
+                      </div>
+                      <p className="flex items-center gap-1 text-xs text-green-600">
+                        <TrendingUp className="h-3 w-3" />
+                        +18% from last month
+                      </p>
+                    </CardContent>
+                  </Card>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

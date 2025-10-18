@@ -16,6 +16,7 @@ import {
   Package,
   Truck,
   CreditCard,
+  User,
 } from "lucide-react";
 
 interface SidebarItem {
@@ -75,6 +76,11 @@ const sidebarItems: SidebarItem[] = [
     href: "/admin/payments",
     icon: CreditCard,
     roles: ["admin"],
+  },
+  {
+    title: "Account",
+    href: "/account",
+    icon: User,
   },
   {
     title: "Settings",

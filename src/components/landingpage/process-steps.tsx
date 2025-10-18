@@ -39,9 +39,9 @@ const steps = [
   },
   {
     number: "05",
-    title: "Launch & Earn",
+    title: "Order",
     description:
-      "Start selling immediately. Orders go directly to your chosen provider for automatic fulfillment.",
+      "Start Ordering immediately. Orders go directly to your chosen provider for automatic fulfillment.",
     icon: Rocket,
     color: "from-indigo-500 to-purple-500",
   },

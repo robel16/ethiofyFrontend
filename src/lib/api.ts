@@ -67,11 +67,14 @@ const createApiClient = (): AxiosInstance => {
           }
         }
 
-        // If refresh fails, clear tokens and redirect to login
+        // If refresh fails, clear tokens but don't redirect immediately
+        // Let the auth context handle the redirect
         if (typeof window !== "undefined") {
+          console.log("API: Token refresh failed, clearing tokens");
           localStorage.removeItem("access_token");
           localStorage.removeItem("refresh_token");
-          window.location.href = "/auth/login";
+          // Don't redirect here - let the auth context handle it
+          // window.location.href = "/auth/login";
         }
       }
 
