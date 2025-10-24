@@ -1,13 +1,14 @@
 import { api } from "@/lib/api";
 
 export interface UserProfile {
+  user: any;
   id: string;
   email: string;
   first_name?: string;
   last_name?: string;
   phone?: string;
   role: "customer" | "merchant" | "print_provider";
-  avatar_url?: string;
+  avatar_url?: string | null;
   timezone?: string;
   language?: string;
   date_of_birth?: string;

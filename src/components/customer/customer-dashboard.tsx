@@ -25,6 +25,10 @@ import {
 import { ProductCarousel } from "@/components/product-carousel";
 import { SetupProgress } from "@/components/setup-progress";
 import AccountSettings from "@/components/customer/account-settings";
+import { NavUser } from "@/components/ui/nav-user";
+import { useAuth } from "@/contexts/auth-context";
+import { UserProfile, userService } from "@/services/user.service";
+import { useEffect } from "react";
 
 const sidebarItems = [
   { icon: Home, label: "Dashboard", active: true },
@@ -117,9 +121,33 @@ const trendingProducts = [
 ];
 
 export default function Dashboard() {
+  const { user, refreshUser } = useAuth();
   const [showPromo, setShowPromo] = useState(true);
   const [currentView, setCurrentView] = useState("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+
+  console.log("user in customer", user);
+  // Load complete user profile data
+  useEffect(() => {
+    const loadUserProfile = async () => {
+      if (user) {
+        try {
+          const response = await userService.getProfile();
+          const profile = response.user;
+
+          console.log("Dashboard: Loaded user profile:", profile);
+          setUserProfile(profile);
+        } catch (error) {
+          console.error("Dashboard: Failed to load user profile:", error);
+        }
+      }
+    };
+
+    loadUserProfile();
+  }, [user]);
+
+  console.log("user in customer", user);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -153,7 +181,7 @@ export default function Dashboard() {
       <div className="flex">
         {/* Sticky Sidebar */}
         <div
-          className={`sticky top-0 h-screen ${sidebarOpen ? "w-64" : "w-16"} overflow-y-auto border-r border-gray-200 bg-white transition-all duration-300 dark:border-gray-700 dark:bg-gray-800`}
+          className={`sticky top-0 h-screen ${sidebarOpen ? "w-64" : "w-16"} flex flex-col overflow-y-auto border-r border-gray-200 bg-white transition-all duration-300 dark:border-gray-700 dark:bg-gray-800`}
         >
           {/* Logo */}
           <div className="border-b border-gray-200 p-4 dark:border-gray-700">
@@ -192,7 +220,7 @@ export default function Dashboard() {
           )}
 
           {/* Navigation */}
-          <nav className="p-2">
+          <nav className="flex-1 p-2">
             {sidebarItems.map((item, index) => (
               <Button
                 key={index}
@@ -229,6 +257,32 @@ export default function Dashboard() {
               </Button>
             ))}
           </nav>
+
+          {/* User Navigation at Bottom */}
+          {user && (
+            <div className="border-t border-gray-200 dark:border-gray-700 ">
+              <NavUser
+                user={{
+                  id: user.id,
+                  email: user.email,
+                  first_name: userProfile?.profile.first_name,
+                  last_name: userProfile?.profile.last_name,
+                  avatar_url: userProfile?.profile.avatar_url,
+                  role: user.role,
+                }}
+                sidebarOpen={sidebarOpen}
+                onAccountClick={() => setCurrentView("account")}
+                onNotificationsClick={() => {
+                  // Navigate to notifications page
+                  console.log("Navigate to notifications");
+                }}
+                onBillingClick={() => {
+                  // Navigate to billing page
+                  console.log("Navigate to billing");
+                }}
+              />
+            </div>
+          )}
         </div>
 
         {/* Main Content - Scrollable */}

@@ -1,15 +1,16 @@
 import { api } from "@/lib/api";
 
 export interface ApiUser {
-  user_id: string;
+  id?: string;
+  user_id?: string;
   email: string;
+  first_name?: string;
+  last_name?: string;
+  phone?: string;
   role: "customer" | "merchant" | "print_provider" | "admin";
-  profile?: {
-    first_name?: string;
-    last_name?: string;
-    timezone?: string;
-    language?: string;
-  };
+  avatar_url?: string;
+  timezone?: string;
+  language?: string;
   preferences?: {
     notifications?: {
       email?: boolean;
@@ -20,6 +21,13 @@ export interface ApiUser {
     currency?: string;
     measurement_unit?: string;
   };
+  addresses?: any[];
+  profile?: {
+    first_name?: string;
+    last_name?: string;
+    timezone?: string;
+    language?: string;
+  };
   metadata?: {
     login_count?: number;
     registration_source?: string;
@@ -28,7 +36,6 @@ export interface ApiUser {
   _id?: string;
   email_verified?: boolean;
   status?: string;
-  addresses?: any[];
   created_at?: string;
   updated_at?: string;
 }
@@ -40,9 +47,14 @@ export interface User {
   name?: string;
   first_name?: string;
   last_name?: string;
+  phone?: string;
+  avatar_url?: string;
+  timezone?: string;
+  language?: string;
   profile?: ApiUser["profile"];
   preferences?: ApiUser["preferences"];
   metadata?: ApiUser["metadata"];
+  addresses?: any[];
   email_verified?: boolean;
   status?: string;
 }
@@ -51,18 +63,28 @@ export interface User {
 function transformApiUser(apiUser: ApiUser): User {
   console.log("transformApiUser: Input apiUser:", apiUser);
 
+  // Use direct fields first, then fallback to profile fields
+  const firstName = apiUser.first_name || apiUser.profile?.first_name;
+  const lastName = apiUser.last_name || apiUser.profile?.last_name;
+
   const transformed = {
-    id: apiUser.user_id || apiUser._id,
+    id: apiUser.id || apiUser.user_id || apiUser._id || "",
     email: apiUser.email,
     role: apiUser.role,
-    name: apiUser.profile
-      ? `${apiUser.profile.first_name || ""} ${apiUser.profile.last_name || ""}`.trim()
-      : undefined,
-    first_name: apiUser.profile?.first_name,
-    last_name: apiUser.profile?.last_name,
+    name:
+      firstName && lastName
+        ? `${firstName} ${lastName}`.trim()
+        : firstName || lastName || undefined,
+    first_name: firstName,
+    last_name: lastName,
+    phone: apiUser.phone,
+    avatar_url: apiUser.avatar_url,
+    timezone: apiUser.timezone || apiUser.profile?.timezone,
+    language: apiUser.language || apiUser.profile?.language,
     profile: apiUser.profile,
     preferences: apiUser.preferences,
     metadata: apiUser.metadata,
+    addresses: apiUser.addresses,
     email_verified: apiUser.email_verified,
     status: apiUser.status,
   };
@@ -244,7 +266,7 @@ export class AuthService {
     }
 
     try {
-      const response = await api.get<ApiResponse<ApiUser>>("/auth/me", {
+      const response = await api.get<ApiResponse<ApiUser>>("/users/profile", {
         headers: {
           Authorization: `Bearer ${this.accessToken}`,
         },
@@ -254,24 +276,35 @@ export class AuthService {
       console.log("AuthService: Response success:", response.data.success);
       console.log("AuthService: Response data exists:", !!response.data.data);
 
-      if (
-        response.data.success &&
-        response.data.data &&
-        response.data.data.user
-      ) {
-        console.log("AuthService: API user data:", response.data.data.user);
-        console.log(
-          "AuthService: API user data keys:",
-          Object.keys(response.data.data.user)
-        );
-        const transformedUser = transformApiUser(response.data.data.user);
+      if (response.data.success && response.data.data) {
+        // Handle both nested user structure and direct user structure
+        const userData = response.data.data.user || response.data.data;
+        console.log("AuthService: API user data:", userData);
+        console.log("AuthService: API user data keys:", Object.keys(userData));
+
+        // Transform the user data to match our expected structure
+        const apiUser: ApiUser = {
+          user_id: userData.id || userData.user_id,
+          email: userData.email,
+          role: userData.role,
+          profile: userData.profile,
+          preferences: userData.preferences,
+          metadata: userData.metadata,
+          _id: userData._id,
+          email_verified: userData.email_verified,
+          status: userData.status,
+          addresses: userData.addresses,
+          created_at: userData.created_at,
+          updated_at: userData.updated_at,
+        };
+
+        const transformedUser = transformApiUser(apiUser);
         console.log("AuthService: Transformed user:", transformedUser);
         return transformedUser;
       } else {
         console.log("AuthService: API response not successful or no user data");
         console.log("AuthService: Success:", response.data.success);
         console.log("AuthService: Data:", response.data.data);
-        console.log("AuthService: User in data:", response.data.data?.user);
       }
     } catch (error: any) {
       if (error.response?.status === 401) {

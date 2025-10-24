@@ -40,6 +40,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { userService } from "@/services/user.service";
 import toast from "react-hot-toast";
 import { AddressCard } from "./address-card";
+import { NavUser } from "@/components/ui/nav-user";
 
 // Validation schemas
 const profileSchema = z.object({
@@ -96,7 +97,7 @@ interface UserProfile {
   last_name?: string;
   phone?: string;
   role: string;
-  avatar_url?: string;
+  avatar_url?: string | null;
   timezone?: string;
   language?: string;
   date_of_birth?: string;
@@ -106,7 +107,7 @@ interface UserProfile {
     last_name?: string;
     phone?: string;
     company?: string;
-    avatar_url?: string;
+    avatar_url?: string | null;
     timezone?: string;
     language?: string;
     date_of_birth?: string;
@@ -244,7 +245,7 @@ function AddressForm({
         </div>
       </div>
 
-      <div>
+      {/* <div>
         <Label htmlFor="address_company">Company (Optional)</Label>
         <Input
           id="address_company"
@@ -252,7 +253,7 @@ function AddressForm({
           placeholder="Enter company name"
           className="dark:bg-gray-700 dark:text-white"
         />
-      </div>
+      </div> */}
 
       <div>
         <Label htmlFor="address_line_1">Address Line 1</Label>
@@ -856,7 +857,7 @@ export default function AccountSettings({ onBack }: AccountSettingsProps) {
       toast.success("Address updated successfully");
       setEditingAddress(null);
       setShowAddressForm(false);
-    } catch (error: unknown) {
+    } catch (error: any) {
       toast.error(error.message || "Failed to update address");
     }
   };
@@ -867,7 +868,7 @@ export default function AccountSettings({ onBack }: AccountSettingsProps) {
       await userService.deleteAddress(addressId);
       await loadProfile(); // Reload entire profile including addresses
       toast.success("Address deleted successfully");
-    } catch (error: unknown) {
+    } catch (error: any) {
       toast.error(error.message || "Failed to delete address");
     }
   };
@@ -938,11 +939,26 @@ export default function AccountSettings({ onBack }: AccountSettingsProps) {
   };
 
   // Handle address form submission
+  // const onSubmitAddress = async (data: AddressFormData) => {
+  //   if (editingAddress) {
+  //     await updateAddress(editingAddress.id, data);
+  //   } else {
+  //     await addAddress(data);
+  //   }
+  // };
+
   const onSubmitAddress = async (data: AddressFormData) => {
+    const finalData = {
+      ...data,
+      street: data.street || "",
+    };
+
     if (editingAddress) {
-      await updateAddress(editingAddress.id, data);
+      // Pass the guaranteed finalData object
+      await updateAddress(editingAddress.id, finalData);
     } else {
-      await addAddress(data);
+      // Pass the guaranteed finalData object
+      await addAddress(finalData);
     }
   };
 
@@ -979,7 +995,8 @@ export default function AccountSettings({ onBack }: AccountSettingsProps) {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
         {/* Sidebar Navigation */}
-        <div className="lg:col-span-1">
+        <div className="space-y-4 lg:col-span-1">
+          {/* Settings Navigation */}
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Settings</CardTitle>
@@ -1029,6 +1046,28 @@ export default function AccountSettings({ onBack }: AccountSettingsProps) {
               </Button>
             </CardContent>
           </Card>
+
+          {/* User Navigation */}
+          {/* <Card>
+            <CardContent className="p-4">
+              <NavUser
+                user={{
+                  id: user?.id || profile?.id || "",
+                  email: user?.email || profile?.email || "",
+                  first_name: profile?.first_name || user?.first_name,
+                  last_name: profile?.last_name || user?.last_name,
+                  avatar_url:
+                    avatarBlobUrl ||
+                    profile?.avatar_url ||
+                    profile?.profile?.avatar_url,
+                  role: user?.role || profile?.role,
+                }}
+                onAccountClick={() => setActiveSection("account")}
+                onNotificationsClick={() => setActiveSection("notifications")}
+                onSignOutClick={handleLogout}
+              />
+            </CardContent>
+          </Card> */}
         </div>
 
         {/* Main Content */}
@@ -1047,13 +1086,9 @@ export default function AccountSettings({ onBack }: AccountSettingsProps) {
                 <div className="flex items-center gap-6">
                   <div className="relative">
                     <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-purple-500/20 to-pink-500/20">
-                      {console.log("Avatar render check:", {
-                        avatarBlobUrl,
-                        profile: profile?.profile?.first_name,
-                      })}
                       {avatarBlobUrl ? (
                         <img
-                          src={avatarBlobUrl || "/placeholder.svg"}
+                          src={avatarBlobUrl}
                           alt="Profile"
                           className="h-full w-full object-cover"
                           onError={(e) => {
@@ -1243,7 +1278,7 @@ export default function AccountSettings({ onBack }: AccountSettingsProps) {
                         </p>
                       )}
                     </div>
-                    <div>
+                    {/* <div>
                       <Label htmlFor="company">Company</Label>
                       <Input
                         id="company"
@@ -1251,10 +1286,7 @@ export default function AccountSettings({ onBack }: AccountSettingsProps) {
                         placeholder="Enter your company name"
                         className="dark:bg-gray-700 dark:text-white"
                       />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    </div> */}
                     <div>
                       <Label htmlFor="date_of_birth">Date of Birth</Label>
                       <Input
@@ -1269,6 +1301,9 @@ export default function AccountSettings({ onBack }: AccountSettingsProps) {
                         </p>
                       )}
                     </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
                       <Label htmlFor="timezone">Timezone</Label>
                       <Input

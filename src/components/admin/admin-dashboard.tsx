@@ -1,450 +1,312 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import {
+  TrendingUp,
+  TrendingDown,
   DollarSign,
   ShoppingCart,
   Users,
-  Building,
-  TrendingUp,
-  TrendingDown,
-  Activity,
-  AlertTriangle,
-  CheckCircle,
+  Package,
   Clock,
-  BarChart3,
-  Eye,
-  Settings,
-  RefreshCw,
-  Download,
-  Bell,
-  Calendar,
-  Globe,
-  Zap,
+  AlertTriangle,
+  Star,
+  MoreHorizontal,
+  Loader2,
 } from "lucide-react";
-import { OrderService } from "@/services/order.service";
-import { UserService } from "@/services/user.service";
-import toast from "react-hot-toast";
-import { formatDistanceToNow } from "date-fns";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Progress } from "@/components/ui/progress";
+import { adminService } from "@/services/admin.service";
 
-interface PlatformMetrics {
-  revenue: {
-    total: number;
-    monthly: number;
-    growth: number;
-  };
-  orders: {
-    total: number;
-    pending: number;
-    processing: number;
-    completed: number;
-    growth: number;
-  };
-  users: {
-    total: number;
-    customers: number;
-    providers: number;
-    admins: number;
-    growth: number;
-  };
-  providers: {
-    total: number;
-    active: number;
-    pending: number;
-    suspended: number;
-  };
+function LoadingSkeleton() {
+  return (
+    <div className="space-y-6 p-6">
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
+        <span className="ml-2 text-gray-600">Loading dashboard data...</span>
+      </div>
+    </div>
+  );
 }
 
-interface SystemAlert {
-  id: string;
-  type: "error" | "warning" | "info";
+function KPICard({
+  title,
+  value,
+  change,
+  trend,
+  icon: Icon,
+  format = "number",
+}: {
   title: string;
-  message: string;
-  timestamp: string;
-  resolved: boolean;
-}
+  value: number;
+  change: number;
+  trend: "up" | "down";
+  icon: React.ElementType;
+  format?: "number" | "currency" | "percentage" | "days";
+}) {
+  const formatValue = (val: number) => {
+    switch (format) {
+      case "currency":
+        return `$${val.toLocaleString()}`;
+      case "percentage":
+        return `${val}%`;
+      case "days":
+        return `${val} days`;
+      default:
+        return val.toLocaleString();
+    }
+  };
 
-interface RecentActivity {
-  id: string;
-  type: "order" | "user" | "provider" | "system";
-  description: string;
-  timestamp: string;
-  status: "success" | "warning" | "error";
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
+          {title}
+        </CardTitle>
+        <Icon className="h-4 w-4 text-gray-400" />
+      </CardHeader>
+      <CardContent>
+        <div className="text-2xl font-bold text-gray-900 dark:text-white">
+          {formatValue(value)}
+        </div>
+        <div className="mt-2 flex items-center">
+          {trend === "up" ? (
+            <TrendingUp className="mr-1 h-4 w-4 text-green-500" />
+          ) : (
+            <TrendingDown className="mr-1 h-4 w-4 text-red-500" />
+          )}
+          <span
+            className={`text-sm font-medium ${
+              trend === "up" ? "text-green-600" : "text-red-600"
+            }`}
+          >
+            {Math.abs(change)}%
+          </span>
+          <span className="ml-1 text-sm text-gray-500">vs last month</span>
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 export function AdminDashboard() {
-  const [metrics, setMetrics] = useState<PlatformMetrics>({
-    revenue: { total: 245231, monthly: 45231, growth: 12.5 },
-    orders: {
-      total: 5234,
-      pending: 45,
-      processing: 123,
-      completed: 4890,
-      growth: 8.3,
-    },
-    users: {
-      total: 2890,
-      customers: 2650,
-      providers: 35,
-      admins: 5,
-      growth: 15.2,
-    },
-    providers: { total: 35, active: 28, pending: 4, suspended: 3 },
+  const {
+    data: dashboardData,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ["admin-dashboard"],
+    queryFn: () => adminService.getDashboardData(),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: false,
   });
 
-  const [alerts, setAlerts] = useState<SystemAlert[]>([
-    {
-      id: "alert_1",
-      type: "warning",
-      title: "High Order Volume",
-      message:
-        "Order volume is 25% higher than usual. Monitor provider capacity.",
-      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-      resolved: false,
-    },
-    {
-      id: "alert_2",
-      type: "info",
-      title: "New Provider Application",
-      message: "3 new provider applications pending review.",
-      timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-      resolved: false,
-    },
-  ]);
+  if (isLoading) {
+    return <LoadingSkeleton />;
+  }
 
-  const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([
-    {
-      id: "activity_1",
-      type: "provider",
-      description: "Premium Print Co. completed 15 orders",
-      timestamp: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
-      status: "success",
-    },
-    {
-      id: "activity_2",
-      type: "order",
-      description: "Order #ORD-2024-1234 disputed by customer",
-      timestamp: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
-      status: "warning",
-    },
-    {
-      id: "activity_3",
-      type: "user",
-      description: "New customer registration: john.doe@example.com",
-      timestamp: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
-      status: "success",
-    },
-  ]);
-
-  const [loading, setLoading] = useState(false);
-
-  const orderService = OrderService.getInstance();
-  const userService = UserService.getInstance();
-
-  useEffect(() => {
-    loadDashboardData();
-  }, []);
-
-  const loadDashboardData = async () => {
-    try {
-      setLoading(true);
-      // In a real implementation, load actual metrics from APIs
-      // For now, using mock data
-    } catch (error: any) {
-      console.error("Error loading dashboard data:", error);
-      toast.error("Failed to load dashboard data");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const resolveAlert = (alertId: string) => {
-    setAlerts(
-      alerts.map((alert) =>
-        alert.id === alertId ? { ...alert, resolved: true } : alert
-      )
+  if (error) {
+    return (
+      <div className="p-6">
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-center">
+              <AlertTriangle className="mx-auto mb-4 h-12 w-12 text-red-500" />
+              <h3 className="mb-2 text-lg font-semibold text-gray-900">
+                Failed to load dashboard
+              </h3>
+              <p className="mb-4 text-gray-600">
+                There was an error loading the dashboard data.
+              </p>
+              <Button onClick={() => window.location.reload()}>Retry</Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     );
-    toast.success("Alert resolved");
-  };
+  }
 
-  const getAlertIcon = (type: string) => {
-    switch (type) {
-      case "error":
-        return <AlertTriangle className="h-4 w-4 text-red-600" />;
-      case "warning":
-        return <AlertTriangle className="h-4 w-4 text-yellow-600" />;
-      default:
-        return <Bell className="h-4 w-4 text-blue-600" />;
-    }
-  };
-
-  const getAlertVariant = (type: string) => {
-    switch (type) {
-      case "error":
-        return "destructive";
-      case "warning":
-        return "default";
-      default:
-        return "default";
-    }
-  };
-
-  const getActivityIcon = (type: string) => {
-    switch (type) {
-      case "order":
-        return <ShoppingCart className="h-4 w-4" />;
-      case "user":
-        return <Users className="h-4 w-4" />;
-      case "provider":
-        return <Building className="h-4 w-4" />;
-      default:
-        return <Activity className="h-4 w-4" />;
-    }
-  };
-
-  const getActivityColor = (status: string) => {
-    switch (status) {
-      case "success":
-        return "text-green-600 bg-green-50";
-      case "warning":
-        return "text-yellow-600 bg-yellow-50";
-      case "error":
-        return "text-red-600 bg-red-50";
-      default:
-        return "text-gray-600 bg-gray-50";
-    }
-  };
+  const { kpis, topProviders, topProducts, ordersByCountry } = dashboardData!;
 
   return (
     <div className="space-y-6 p-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-          <p className="mt-2 text-gray-600">Platform overview and management</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+            Dashboard
+          </h1>
+          <p className="mt-1 text-gray-600 dark:text-gray-400">
+            Overview of your print-on-demand platform
+          </p>
         </div>
-        <div className="flex items-center space-x-2">
-          <Button
-            variant="outline"
-            onClick={loadDashboardData}
-            disabled={loading}
-          >
-            <RefreshCw
-              className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`}
-            />
-            Refresh
-          </Button>
-          <Button variant="outline">
-            <Download className="mr-2 h-4 w-4" />
-            Export Report
-          </Button>
-          <Button>
-            <Settings className="mr-2 h-4 w-4" />
-            Settings
-          </Button>
+        <div className="flex items-center space-x-3">
+          <Select defaultValue="30d">
+            <SelectTrigger className="w-32">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="7d">Last 7 days</SelectItem>
+              <SelectItem value="30d">Last 30 days</SelectItem>
+              <SelectItem value="90d">Last 90 days</SelectItem>
+              <SelectItem value="1y">Last year</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button>Export Report</Button>
         </div>
       </div>
 
-      {/* System Alerts */}
-      {alerts.filter((alert) => !alert.resolved).length > 0 && (
-        <div className="space-y-2">
-          {alerts
-            .filter((alert) => !alert.resolved)
-            .map((alert) => (
-              <Alert key={alert.id} variant={getAlertVariant(alert.type)}>
-                {getAlertIcon(alert.type)}
-                <AlertDescription className="flex items-center justify-between">
-                  <div>
-                    <strong>{alert.title}:</strong> {alert.message}
-                    <span className="ml-2 text-xs text-gray-500">
-                      {formatDistanceToNow(new Date(alert.timestamp), {
-                        addSuffix: true,
-                      })}
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <KPICard
+          title="Total Orders"
+          value={kpis.totalOrders.value}
+          change={kpis.totalOrders.change}
+          trend={kpis.totalOrders.trend}
+          icon={ShoppingCart}
+        />
+        <KPICard
+          title="Gross Revenue"
+          value={kpis.grossRevenue.value}
+          change={kpis.grossRevenue.change}
+          trend={kpis.grossRevenue.trend}
+          icon={DollarSign}
+          format="currency"
+        />
+        <KPICard
+          title="Net Revenue"
+          value={kpis.netRevenue.value}
+          change={kpis.netRevenue.change}
+          trend={kpis.netRevenue.trend}
+          icon={TrendingUp}
+          format="currency"
+        />
+        <KPICard
+          title="Outstanding Payouts"
+          value={kpis.outstandingPayouts.value}
+          change={kpis.outstandingPayouts.change}
+          trend={kpis.outstandingPayouts.trend}
+          icon={Clock}
+          format="currency"
+        />
+        <KPICard
+          title="Refund Rate"
+          value={kpis.refundRate.value}
+          change={kpis.refundRate.change}
+          trend={kpis.refundRate.trend}
+          icon={AlertTriangle}
+          format="percentage"
+        />
+        <KPICard
+          title="Avg Production Time"
+          value={kpis.avgProductionTime.value}
+          change={kpis.avgProductionTime.change}
+          trend={kpis.avgProductionTime.trend}
+          icon={Package}
+          format="days"
+        />
+      </div>
+
+      {/* Charts Row */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* Revenue Chart Placeholder */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Revenue Over Time</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex h-64 items-center justify-center rounded-lg bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20">
+              <div className="text-center">
+                <TrendingUp className="mx-auto mb-2 h-12 w-12 text-purple-400" />
+                <p className="text-gray-500">
+                  Revenue chart will be implemented with Recharts
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Orders by Country */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Orders by Country</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {ordersByCountry.map((item) => (
+                <div
+                  key={item.country}
+                  className="flex items-center justify-between"
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className="h-5 w-8 rounded-sm bg-gray-200 dark:bg-gray-700"></div>
+                    <span className="text-sm font-medium">{item.country}</span>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <Progress value={item.percentage} className="w-20" />
+                    <span className="w-12 text-right text-sm text-gray-500">
+                      {item.orders.toLocaleString()}
                     </span>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => resolveAlert(alert.id)}
-                  >
-                    <CheckCircle className="mr-1 h-3 w-3" />
-                    Resolve
-                  </Button>
-                </AlertDescription>
-              </Alert>
-            ))}
-        </div>
-      )}
-
-      {/* KPI Overview */}
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              ${metrics.revenue.total.toLocaleString()}
+                </div>
+              ))}
             </div>
-            <div className="mt-1 flex items-center text-xs text-muted-foreground">
-              <TrendingUp className="mr-1 h-3 w-3 text-green-600" />+
-              {metrics.revenue.growth}% from last month
-            </div>
-            <p className="mt-1 text-xs text-muted-foreground">
-              ${metrics.revenue.monthly.toLocaleString()} this month
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
-            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">
-              {metrics.orders.total.toLocaleString()}
-            </div>
-            <div className="mt-1 flex items-center text-xs text-muted-foreground">
-              <TrendingUp className="mr-1 h-3 w-3 text-blue-600" />+
-              {metrics.orders.growth}% from last month
-            </div>
-            <div className="mt-1 flex items-center space-x-2 text-xs">
-              <Badge variant="outline" className="text-yellow-600">
-                {metrics.orders.pending} pending
-              </Badge>
-              <Badge variant="outline" className="text-blue-600">
-                {metrics.orders.processing} processing
-              </Badge>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Platform Users
-            </CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-purple-600">
-              {metrics.users.total.toLocaleString()}
-            </div>
-            <div className="mt-1 flex items-center text-xs text-muted-foreground">
-              <TrendingUp className="mr-1 h-3 w-3 text-purple-600" />+
-              {metrics.users.growth}% from last month
-            </div>
-            <div className="mt-1 text-xs text-muted-foreground">
-              {metrics.users.customers} customers, {metrics.users.providers}{" "}
-              providers
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Print Providers
-            </CardTitle>
-            <Building className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-orange-600">
-              {metrics.providers.total}
-            </div>
-            <div className="mt-1 flex items-center space-x-2 text-xs">
-              <Badge variant="secondary" className="text-green-600">
-                {metrics.providers.active} active
-              </Badge>
-              <Badge variant="outline" className="text-yellow-600">
-                {metrics.providers.pending} pending
-              </Badge>
-            </div>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {metrics.providers.suspended} suspended
-            </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Platform Health */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      {/* Tables Row */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* Top Providers */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">System Health</CardTitle>
-            <CardDescription>
-              Overall platform performance metrics
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <div className="mb-1 flex justify-between text-sm">
-                <span>Order Processing</span>
-                <span>98.5%</span>
-              </div>
-              <Progress value={98.5} className="h-2" />
-            </div>
-            <div>
-              <div className="mb-1 flex justify-between text-sm">
-                <span>Provider Capacity</span>
-                <span>76%</span>
-              </div>
-              <Progress value={76} className="h-2" />
-            </div>
-            <div>
-              <div className="mb-1 flex justify-between text-sm">
-                <span>Customer Satisfaction</span>
-                <span>94.2%</span>
-              </div>
-              <Progress value={94.2} className="h-2" />
-            </div>
-            <div>
-              <div className="mb-1 flex justify-between text-sm">
-                <span>System Uptime</span>
-                <span>99.9%</span>
-              </div>
-              <Progress value={99.9} className="h-2" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Recent Activity</CardTitle>
-            <CardDescription>
-              Latest platform activities and events
-            </CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Top Providers</CardTitle>
+            <Button variant="ghost" size="sm">
+              View All
+            </Button>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {recentActivity.slice(0, 5).map((activity) => (
-                <div key={activity.id} className="flex items-start space-x-3">
-                  <div
-                    className={`rounded-full p-1 ${getActivityColor(activity.status)}`}
-                  >
-                    {getActivityIcon(activity.type)}
+            <div className="space-y-4">
+              {topProviders.map((provider, index) => (
+                <div
+                  key={provider.id}
+                  className="flex items-center justify-between rounded-lg p-3 hover:bg-gray-50 dark:hover:bg-gray-800"
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-500 text-sm font-medium text-white">
+                      {index + 1}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">{provider.name}</p>
+                      <div className="mt-1 flex items-center space-x-2">
+                        <Badge variant="outline" className="text-xs">
+                          {provider.country}
+                        </Badge>
+                        <div className="flex items-center">
+                          <Star className="h-3 w-3 fill-current text-yellow-400" />
+                          <span className="ml-1 text-xs text-gray-500">
+                            {provider.rating}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm text-gray-900">
-                      {activity.description}
+                  <div className="text-right">
+                    <p className="text-sm font-medium">
+                      ${provider.revenue.toLocaleString()}
                     </p>
                     <p className="text-xs text-gray-500">
-                      {formatDistanceToNow(new Date(activity.timestamp), {
-                        addSuffix: true,
-                      })}
+                      {provider.orders} orders
                     </p>
                   </div>
                 </div>
@@ -453,76 +315,46 @@ export function AdminDashboard() {
           </CardContent>
         </Card>
 
+        {/* Top Products */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Quick Actions</CardTitle>
-            <CardDescription>Common administrative tasks</CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Top Products</CardTitle>
+            <Button variant="ghost" size="sm">
+              View All
+            </Button>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <Button className="w-full justify-start" variant="outline">
-              <Users className="mr-2 h-4 w-4" />
-              Manage Users
-            </Button>
-            <Button className="w-full justify-start" variant="outline">
-              <Building className="mr-2 h-4 w-4" />
-              Review Providers
-            </Button>
-            <Button className="w-full justify-start" variant="outline">
-              <ShoppingCart className="mr-2 h-4 w-4" />
-              Monitor Orders
-            </Button>
-            <Button className="w-full justify-start" variant="outline">
-              <BarChart3 className="mr-2 h-4 w-4" />
-              View Analytics
-            </Button>
-            <Button className="w-full justify-start" variant="outline">
-              <Settings className="mr-2 h-4 w-4" />
-              Platform Settings
-            </Button>
+          <CardContent>
+            <div className="space-y-4">
+              {topProducts.map((product, index) => (
+                <div
+                  key={product.id}
+                  className="flex items-center justify-between rounded-lg p-3 hover:bg-gray-50 dark:hover:bg-gray-800"
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-green-500 to-blue-500 text-sm font-medium text-white">
+                      {index + 1}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">{product.name}</p>
+                      <p className="text-xs text-gray-500">
+                        {product.orders} orders
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-medium">
+                      ${product.revenue.toLocaleString()}
+                    </p>
+                    <Badge variant="secondary" className="text-xs">
+                      {product.margin} margin
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
       </div>
-
-      {/* Analytics Overview */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BarChart3 className="h-5 w-5" />
-            Analytics Overview
-          </CardTitle>
-          <CardDescription>
-            Key performance indicators and trends
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-            <div className="flex items-center space-x-4 rounded-lg border p-4">
-              <TrendingUp className="h-8 w-8 text-green-600" />
-              <div>
-                <p className="text-sm text-gray-600">Revenue Growth</p>
-                <p className="text-lg font-semibold text-gray-900">+12.5%</p>
-                <p className="text-xs text-green-600">Trending upward</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4 rounded-lg border p-4">
-              <Activity className="h-8 w-8 text-blue-600" />
-              <div>
-                <p className="text-sm text-gray-600">Order Volume</p>
-                <p className="text-lg font-semibold text-gray-900">High</p>
-                <p className="text-xs text-blue-600">Above average</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4 rounded-lg border p-4">
-              <Users className="h-8 w-8 text-purple-600" />
-              <div>
-                <p className="text-sm text-gray-600">User Acquisition</p>
-                <p className="text-lg font-semibold text-gray-900">+15.2%</p>
-                <p className="text-xs text-purple-600">Strong growth</p>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

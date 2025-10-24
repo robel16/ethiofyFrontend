@@ -18,6 +18,8 @@ import {
   CreditCard,
   User,
 } from "lucide-react";
+import { NavUser } from "./nav-user";
+import { sidebarData } from "./data/sidebar-data";
 
 interface SidebarItem {
   title: string;
@@ -122,6 +124,9 @@ export function Sidebar({ className }: SidebarProps) {
             })}
           </div>
         </div>
+      </div>
+      <div>
+        <NavUser user={sidebarData.user} />
       </div>
     </div>
   );

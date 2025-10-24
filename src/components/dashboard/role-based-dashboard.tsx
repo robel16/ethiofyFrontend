@@ -13,6 +13,8 @@ import { ProviderManagement } from "@/components/provider/provider-management";
 import CustomerDashboard from "@/components/customer/customer-dashboard";
 
 export function RoleBasedDashboard() {
+  console.log("🎯 RoleBasedDashboard component is rendering!");
+
   const { user, isLoading } = useAuth();
   const router = useRouter();
 
