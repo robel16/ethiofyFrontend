@@ -247,7 +247,7 @@ class AdminService {
       if (filters?.page) queryParams.append("page", filters.page.toString());
       if (filters?.limit) queryParams.append("limit", filters.limit.toString());
 
-      const endpoint = `/admin/providers${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
+      const endpoint = `/dashboard/providers${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
       return await this.makeRequest(endpoint);
     } catch (error) {
       console.warn("Failed to fetch providers, using mock data:", error);

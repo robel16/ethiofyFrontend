@@ -12,7 +12,7 @@ const mockUser = {
 
 export default function ProvidersPage() {
   return (
-    <AdminShell currentPath="/admin/providers" user={mockUser}>
+    <AdminShell currentPath="/dashboard/providers" user={mockUser}>
       <ProvidersList />
     </AdminShell>
   );

@@ -52,19 +52,19 @@ const navigationItems = [
   {
     title: "Dashboard",
     icon: LayoutDashboard,
-    href: "/dashboard/providers",
+    href: "/dashboard",
     badge: null,
   },
   {
     title: "Providers",
     icon: Building2,
-    href: "/admin/providers",
+    href: "/dashboard/providers",
     badge: "12",
   },
   {
     title: "Products",
     icon: Package,
-    href: "/admin/products",
+    href: "/dashboard/products",
     badge: null,
   },
   {
@@ -143,7 +143,7 @@ const navigationItems = [
 
 export function AdminShell({
   children,
-  currentPath = "/admin",
+  currentPath = "/dashboard",
   user,
 }: AdminShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -157,7 +157,7 @@ export function AdminShell({
     try {
       await logout();
       toast.success("Logged out successfully");
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.error("Failed to logout");
     }
   };

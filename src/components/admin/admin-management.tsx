@@ -26,7 +26,7 @@ export function AdminManagement() {
   console.log("📋 AdminUser object created:", adminUser);
 
   return (
-    <AdminShell currentPath="/admin" user={adminUser}>
+    <AdminShell currentPath="/dashboard" user={adminUser}>
       <AdminDashboard />
     </AdminShell>
   );
